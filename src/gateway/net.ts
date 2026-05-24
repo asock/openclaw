@@ -248,14 +248,14 @@ export {
 };
 
 /**
- * Resolves gateway bind host with fallback strategy.
+ * Resolves the gateway bind host.
  *
  * Modes:
- * - loopback: 127.0.0.1 (rarely fails, but handled gracefully)
- * - lan: always 0.0.0.0 (no fallback)
+ * - loopback: localhost-only address
+ * - lan: wildcard IPv4 listener for explicitly requested LAN exposure
  * - tailnet: Tailnet IPv4 if available, else loopback
- * - auto: 0.0.0.0 inside containers (Docker/Podman/K8s); loopback otherwise
- * - custom: User-specified IP, fallback to 0.0.0.0 if unavailable
+ * - auto: container-friendly wildcard listener in containers; loopback otherwise
+ * - custom: user-specified IP, with LAN fallback when unavailable
  *
  * @returns The bind address to use (never null)
  */
@@ -303,7 +303,7 @@ export async function resolveGatewayBindHost(
 
   if (mode === "auto") {
     // Inside a container, loopback is unreachable from the host network
-    // namespace, so prefer 0.0.0.0 to make port-forwarding work.
+    // namespace, so prefer a wildcard listener to make port-forwarding work.
     if (isContainerEnvironment()) {
       return "0.0.0.0";
     }
@@ -319,8 +319,8 @@ export async function resolveGatewayBindHost(
 /**
  * Returns the effective default bind mode when `gateway.bind` is not explicitly
  * configured. Inside a detected container environment the default is `"auto"`
- * (which resolves to `0.0.0.0` for port-forwarding compatibility); on bare-metal
- * / VM hosts the default remains `"loopback"`.
+ * (which resolves to a container-friendly listener for port-forwarding
+ * compatibility); on bare-metal / VM hosts the default remains `"loopback"`.
  *
  * When {@link tailscaleMode} is `"serve"` or `"funnel"`, the function always
  * returns `"loopback"` because Tailscale serve/funnel architecturally requires
